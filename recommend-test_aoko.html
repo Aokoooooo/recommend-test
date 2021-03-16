@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>recommend test -- aoko</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+  <script type="text/babel">
+    const Ctx = React.createContext()
+    const RECOMMEND_MAX = 3
+
+    const isValidWeight = (v) => /[1234567890]*/.test(v)
+
+    const Debug = () => {
+      const ctx = React.useContext(Ctx)
+
+      return (
+        !!ctx.debug.length && (
+          <div style={{ width: '100%', marginTop: 20 }}>
+            <h2 style={{ textAlign: 'center', width: '100%' }}>DEBUG</h2>
+            {ctx.debug.map((v, i) => (
+              <p key={i} style={{ width: '100%', textAlign: 'left', whiteSpace: 'break-spaces' }}>
+                {v}
+              </p>
+            ))}
+          </div>
+        )
+      )
+    }
+
+    const Banner = () => {
+      const ctx = React.useContext(Ctx)
+
+      return (
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{ width: '100%', display: 'flex', flexDirection: 'column', textAlign: 'center' }}
+          >
+            <h1 style={{ marginTop: 0 }}>{`推荐位（${RECOMMEND_MAX} 个）`}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
+              {ctx.banner.map((v, i) => (
+                <div
+                  key={v}
+                  style={{ width: '30%', fontSize: 20, fontWeight: 'bold', color: 'red' }}
+                >
+                  {v}
+                </div>
+              ))}
+            </div>
+            <Debug />
+          </div>
+        </div>
+      )
+    }
+
+    const List = () => {
+      const ctx = React.useContext(Ctx)
+      const weightSum = ctx.list.reduce((x, y) => x + y, 0)
+
+      const renderRate = (weight = 0) => {
+        if (weightSum) {
+          return ((weight / weightSum) * 100).toFixed(4)
+        }
+        return ((1 / ctx.list.length) * 100).toFixed(4)
+      }
+      const onDeleteClick = (key) => {
+        const list = [...ctx.list]
+        list.splice(key, 1)
+        ctx.setList(list)
+      }
+      const onEditClick = (key) => {
+        const r = prompt('请输入权重（大于等于 0 的整数，不填或者瞎填代表 0）')
+        if (isValidWeight(r)) {
+          const newList = [...ctx.list]
+          newList[key] = Number.parseInt(r) || 0
+          ctx.setList(newList)
+        }
+      }
+
+      return (
+        <table
+          style={{
+            width: '100%',
+            textAlign: 'center',
+          }}
+        >
+          <thead>
+            <tr>
+              <th>值</th>
+              <th>权重</th>
+              <th>占比（%）</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ctx.list.map((v, i) => (
+              <tr key={i}>
+                <td style={{ color: 'red' }}>{i}</td>
+                <td>{v}</td>
+                <td>{renderRate(v)}</td>
+                <td>
+                  <button onClick={onEditClick.bind(this, i)}>编辑</button>
+                  <button onClick={onDeleteClick.bind(this, i)}>删除</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    }
+
+    const Btns = () => {
+      const ctx = React.useContext(Ctx)
+      const [lastIdx, setLastIdx] = React.useState(0)
+
+      const onAddClick = () => {
+        const value = prompt('请输入权重（大于等于 0 的整数，不填或者瞎填代表 0）')
+        const weight = isValidWeight(value) ? Number.parseInt(value) || 0 : 0
+        ctx.setList(ctx.list.concat(weight))
+      }
+      const onClearClick = () => {
+        ctx.setList([])
+        ctx.setDebug([])
+      }
+      const beforeRefreshClick = () => {
+        if (ctx.list.length < RECOMMEND_MAX) {
+          alert(`最少得有 ${RECOMMEND_MAX} 个候选项`)
+          return false
+        }
+        ctx.setDebug([])
+        return true
+      }
+      const onNormalRefreshClick = () => {
+        if (!beforeRefreshClick()) {
+          return
+        }
+        let idx = lastIdx
+        const newBanner = []
+        while (newBanner.length < RECOMMEND_MAX) {
+          newBanner.push(idx)
+          if (idx + 1 < ctx.list.length) {
+            idx++
+          } else {
+            idx = 0
+          }
+        }
+        ctx.setBanner(newBanner)
+        setLastIdx(idx)
+      }
+      const onSpecialRefreshClick = () => {
+        if (!beforeRefreshClick()) {
+          return
+        }
+        const newBanner = []
+        const debug = []
+        let drawTime = 0
+        // 按照权重从小打到排序
+        let sortedList = ctx.list
+          .map((v, i) => ({ idx: i, weight: v }))
+          .sort((x, y) => x.weight - y.weight)
+        while (newBanner.length < RECOMMEND_MAX) {
+          const maxWeight = sortedList.reduce((x, y) => Math.max(x + y.weight), 0)
+          const hasWeight = !!maxWeight
+          debug.push(
+            `第【${drawTime++}】次抽取，当前按照【${hasWeight ? '权重' : '平均概率'}】随机抽取`
+          )
+          // 按照权重比例转换为坐标轴
+          // 坐标间隔为权重值
+          const getHelperList = (list) => {
+            return list.reduce((x, y) => {
+              const lastPos = x.length ? x[x.length - 1].pos : 0
+              x.push({ ...y, pos: y.weight + lastPos })
+              return x
+            }, [])
+          }
+          const helperList = hasWeight
+            ? getHelperList(sortedList)
+            : // 平均概率时设权重为 1
+              getHelperList(sortedList.map((v) => ({ weight: 1, idx: v.idx })))
+          const sumWeight = helperList.reduce((x, y) => x + y.weight, 0)
+          debug.push(
+            `候选列表为\n${helperList
+              .map((v) => {
+                const base = hasWeight ? maxWeight : helperList.length
+                // const base = sumWeight
+                const rate = (((v.weight || 0) / base) * 100).toFixed(4)
+                v.rate = rate
+                return `【坐标：${v.pos}】【值：${v.idx}】【权重：${v.weight}】【概率：${v.rate}】`
+              })
+              .join('\n')}`
+          )
+          debug.push(`最大随机数为【${sumWeight}】`)
+          // 抽一个随机数，看看会落在坐标轴的哪里
+          const draw = Math.random() * sumWeight
+          let item
+          for (const i of helperList) {
+            if (draw < i.pos) {
+              item = i
+              break
+            }
+          }
+          debug.push(
+            `抽到了【${draw}】，它代表着【坐标：${item.pos}】【值：${item.idx}】【权重：${item.weight}】【概率：${item.rate}】`
+          )
+          newBanner.push(item.idx)
+          sortedList = sortedList.filter((v) => v.idx !== item.idx)
+          debug.push('---分割线---')
+        }
+        ctx.setBanner(newBanner)
+        ctx.setDebug(debug)
+      }
+
+      return (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: 10,
+          }}
+        >
+          <button onClick={onNormalRefreshClick}>普通模式刷新</button>
+          <button onClick={onSpecialRefreshClick}>权重模式刷新</button>
+          <button onClick={onAddClick}>添加</button>
+          <button onClick={onClearClick}>清空</button>
+        </div>
+      )
+    }
+
+    const App = () => {
+      const [list, setList] = React.useState([])
+      const [banner, setBanner] = React.useState([])
+      const [debug, setDebug] = React.useState([])
+
+      return (
+        <Ctx.Provider value={{ list, setList, banner, setBanner, debug, setDebug }}>
+          <div
+            style={{
+              display: 'flex',
+            }}
+          >
+            <div
+              style={{
+                width: '40vw',
+              }}
+            >
+              <Btns />
+              <List />
+              <div>
+                <h3>说明</h3>
+                <h4>普通模式刷新</h4>
+                <p>按照【上方列表】的【顺序】，在推荐位中显示【值】</p>
+                <p>例如</p>
+                <p>当前列表的值为【0, 1, 2, 3】</p>
+                <p>那么第一次点击刷新后显示【0, 1, 2】</p>
+                <p>第二次点击刷新后显示【3, 0, 1】</p>
+                <p>以此类推</p>
+                <h4>权重模式刷新</h4>
+                <p>连续抽【{RECOMMEND_MAX}】次</p>
+                <p>
+                  【每次抽取时】【候选项】存在【权重】，则按照【权重比例】抽，否则按照【平均比例】抽
+                </p>
+                <p>例如</p>
+                <p>当前列表的值为【0, 1, 2, 3】,权重分别为【1, 0, 0, 0】</p>
+                <p>那么点击刷新时</p>
+                <p>第一次抽取每一项的概率分别为（%）【100, 0, 0, 0】</p>
+                <p>第二次为（%）【33.3, 33.3, 33.3】</p>
+                <p>第三次分别为（%）【50, 50】</p>
+              </div>
+            </div>
+            <Banner />
+          </div>
+        </Ctx.Provider>
+      )
+    }
+
+    ReactDOM.render(<App />, document.getElementById('app'))
+  </script>
+</html>
+
