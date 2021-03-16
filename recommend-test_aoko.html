@@ -91,34 +91,42 @@
       }
 
       return (
-        <table
+        <div
           style={{
             width: '100%',
             textAlign: 'center',
           }}
         >
-          <thead>
-            <tr>
-              <th>值</th>
-              <th>权重</th>
-              <th>占比（%）</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ctx.list.map((v, i) => (
-              <tr key={i}>
-                <td style={{ color: 'red' }}>{i}</td>
-                <td>{v}</td>
-                <td>{renderRate(v)}</td>
-                <td>
-                  <button onClick={onEditClick.bind(this, i)}>编辑</button>
-                  <button onClick={onDeleteClick.bind(this, i)}>删除</button>
-                </td>
+          <h2>候选项</h2>
+          <table
+            style={{
+              width: '100%',
+              textAlign: 'center',
+            }}
+          >
+            <thead>
+              <tr>
+                <th>值</th>
+                <th>权重</th>
+                <th>占比（%）</th>
+                <th>操作</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ctx.list.map((v, i) => (
+                <tr key={i}>
+                  <td style={{ color: 'red' }}>{i}</td>
+                  <td>{v}</td>
+                  <td>{renderRate(v)}</td>
+                  <td>
+                    <button onClick={onEditClick.bind(this, i)}>编辑</button>
+                    <button onClick={onDeleteClick.bind(this, i)}>删除</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )
     }
 
@@ -195,7 +203,6 @@
             `候选列表为\n${helperList
               .map((v) => {
                 const base = hasWeight ? maxWeight : helperList.length
-                // const base = sumWeight
                 const rate = (((v.weight || 0) / base) * 100).toFixed(4)
                 v.rate = rate
                 return `【坐标：${v.pos}】【值：${v.idx}】【权重：${v.weight}】【概率：${v.rate}】`
@@ -286,7 +293,10 @@
       )
     }
 
+    window.onerror = () => {
+      alert('报错了！换 Chrome 试试呢？还不行的话请按 F12 打开 console 面板截图，并在企业微信联系 Aoko')
+    }
+
     ReactDOM.render(<App />, document.getElementById('app'))
   </script>
 </html>
-
