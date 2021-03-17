@@ -168,7 +168,7 @@
         let idx = lastIdx
         const newBanner = []
         const debug = []
-        debug.push('按照【权重】排序后的后续项为')
+        debug.push('按照【权重】排序后的候选项为')
         debug.push(ctx.sortedList.map((v) => `【值：${v.idx}】【权重：${v.weight}】`).join('\n'))
         while (newBanner.length < RECOMMEND_MAX) {
           newBanner.push(ctx.sortedList[idx].idx)
