@@ -9,6 +9,15 @@
       body {
         margin: 0;
         padding: 0;
+        background: #f8f8f8;
+      }
+      button {
+        height: 24px;
+        margin-right: 5px;
+        border: none;
+        background: #169bd5;
+        color: white;
+        cursor: pointer;
       }
     </style>
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
@@ -60,7 +69,7 @@
                 </div>
               ))}
             </div>
-            <Debug />
+            {ctx.isDebug && <Debug />}
           </div>
         </div>
       )
@@ -141,6 +150,7 @@
       }
       const onClearClick = () => {
         ctx.setList([])
+        ctx.setBanner([])
         ctx.setDebug([])
       }
       const beforeRefreshClick = () => {
@@ -157,15 +167,19 @@
         }
         let idx = lastIdx
         const newBanner = []
+        const debug = []
+        debug.push('按照【权重】排序后的后续项为')
+        debug.push(ctx.sortedList.map((v) => `【值：${v.idx}】【权重：${v.weight}】`).join('\n'))
         while (newBanner.length < RECOMMEND_MAX) {
-          newBanner.push(idx)
-          if (idx + 1 < ctx.list.length) {
+          newBanner.push(ctx.sortedList[idx].idx)
+          if (idx + 1 < ctx.sortedList.length) {
             idx++
           } else {
             idx = 0
           }
         }
         ctx.setBanner(newBanner)
+        ctx.setDebug(debug)
         setLastIdx(idx)
       }
       const onSpecialRefreshClick = () => {
@@ -229,6 +243,13 @@
         ctx.setBanner(newBanner)
         ctx.setDebug(debug)
       }
+      const onDebugClick = () => {
+        ctx.setIsDebug(!ctx.isDebug)
+      }
+
+      React.useEffect(() => {
+        setLastIdx(0)
+      }, [ctx.sortedList])
 
       return (
         <div
@@ -242,17 +263,41 @@
           <button onClick={onSpecialRefreshClick}>权重模式刷新</button>
           <button onClick={onAddClick}>添加</button>
           <button onClick={onClearClick}>清空</button>
+          <button onClick={onDebugClick} style={{ background: ctx.isDebug ? 'green' : 'red' }}>
+            DEBUG
+          </button>
         </div>
       )
     }
 
     const App = () => {
       const [list, setList] = React.useState([])
+      const [sortedList, setSortedList] = React.useState([])
       const [banner, setBanner] = React.useState([])
       const [debug, setDebug] = React.useState([])
+      const [isDebug, setIsDebug] = React.useState(false)
+
+      React.useEffect(() => {
+        setSortedList(
+          list.map((v, i) => ({ idx: i, weight: v })).sort((x, y) => y.weight - x.weight)
+        )
+      }, [list])
 
       return (
-        <Ctx.Provider value={{ list, setList, banner, setBanner, debug, setDebug }}>
+        <Ctx.Provider
+          value={{
+            list,
+            setList,
+            banner,
+            setBanner,
+            debug,
+            setDebug,
+            isDebug,
+            setIsDebug,
+            sortedList,
+            setSortedList,
+          }}
+        >
           <div
             style={{
               display: 'flex',
@@ -268,12 +313,13 @@
               <div>
                 <h3>说明</h3>
                 <h4>普通模式刷新</h4>
-                <p>按照【上方列表】的【顺序】，在推荐位中显示【值】</p>
+                <p>按照【上方列表】的【权重】顺序，在推荐位中显示【值】</p>
                 <p>例如</p>
-                <p>当前列表的值为【0, 1, 2, 3】</p>
-                <p>那么第一次点击刷新后显示【0, 1, 2】</p>
-                <p>第二次点击刷新后显示【3, 0, 1】</p>
+                <p>当前列表的值为【0, 1, 2, 3】，权重为【3, 2, 1, 0】</p>
+                <p>那么第一次点击刷新后显示【3, 2, 1】</p>
+                <p>第二次点击刷新后显示【0, 3, 2】</p>
                 <p>以此类推</p>
+
                 <h4>权重模式刷新</h4>
                 <p>连续抽【{RECOMMEND_MAX}】次</p>
                 <p>
@@ -294,7 +340,9 @@
     }
 
     window.onerror = () => {
-      alert('报错了！换 Chrome 试试呢？还不行的话请按 F12 打开 console 面板截图，并在企业微信联系 Aoko')
+      alert(
+        '报错了！换 Chrome 试试呢？还不行的话请按 F12 打开 console 面板截图，并在企业微信联系 Aoko'
+      )
     }
 
     ReactDOM.render(<App />, document.getElementById('app'))
